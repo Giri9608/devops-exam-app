@@ -16,7 +16,7 @@ pipeline {
 
         stage('File System Scan') {
             steps {
-                sh "trivy fs --security-checks vuln,config --format table -o trivy-fs-report.html ."
+                sh "trivy fs --scanners vuln,misconfig --format table -o trivy-fs-report.html ."
             }
         }
 
@@ -60,7 +60,7 @@ pipeline {
         stage('Docker Scout Image Analysis') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                    withDockerRegistry(credentialsId: 'docker-creds', toolName: 'docker') {
                         sh "docker scout quickview ${DOCKER_IMAGE}"
                         sh "docker scout cves ${DOCKER_IMAGE}"
                         sh "docker scout recommendations ${DOCKER_IMAGE}"
