@@ -44,7 +44,7 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build and Push Docker Image') {
             steps {
                 dir('backend') {
                     script {
@@ -61,9 +61,9 @@ pipeline {
             steps {
                 script {
                     withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
-                        sh "docker-scout quickview ${DOCKER_IMAGE}"
-                        sh "docker-scout cves ${DOCKER_IMAGE}"
-                        sh "docker-scout recommendations ${DOCKER_IMAGE}"
+                        sh "docker scout quickview ${DOCKER_IMAGE}"
+                        sh "docker scout cves ${DOCKER_IMAGE}"
+                        sh "docker scout recommendations ${DOCKER_IMAGE}"
                     }
                 }
             }
