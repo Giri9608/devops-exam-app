@@ -16,7 +16,7 @@ pipeline {
 
         stage('File System Scan') {
             steps {
-                sh "trivy fs --scanners vuln,misconfig --format table -o trivy-fs-report.html ."
+                sh "trivy fs --security-checks vuln,config --format table -o trivy-fs-report.html ."
             }
         }
 
@@ -44,12 +44,13 @@ pipeline {
             }
         }
 
-        stage('Build and Push Docker Image') {
+        stage('Build Docker Image') {
             steps {
                 dir('backend') {
                     script {
-                        withDockerRegistry(credentialsId: 'docker-creds', toolName: 'docker') {
+                        withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
                             sh "docker build -t ${DOCKER_IMAGE} ."
+                            // Push the image to Docker Hub if needed
                             sh "docker push ${DOCKER_IMAGE}"
                         }
                     }
@@ -57,13 +58,14 @@ pipeline {
             }
         }
 
+        // Added Docker Scout Image Analysis
         stage('Docker Scout Image Analysis') {
             steps {
                 script {
-                    withDockerRegistry(credentialsId: 'docker-creds', toolName: 'docker') {
-                        sh "docker scout quickview ${DOCKER_IMAGE}"
-                        sh "docker scout cves ${DOCKER_IMAGE}"
-                        sh "docker scout recommendations ${DOCKER_IMAGE}"
+                    withDockerRegistry(credentialsId: 'docker', toolName: 'docker') {
+                        sh "docker-scout quickview ${DOCKER_IMAGE}"
+                        sh "docker-scout cves ${DOCKER_IMAGE}"
+                        sh "docker-scout recommendations ${DOCKER_IMAGE}"
                     }
                 }
             }
@@ -75,8 +77,8 @@ pipeline {
                 # Clean up any existing containers
                 docker compose down --remove-orphans || true
                 
-                # Start services
-                docker compose up -d
+                # Start services with build
+                docker compose up -d --build
                 
                 # Wait for MySQL to be ready
                 echo "Waiting for MySQL to be ready..."
@@ -109,7 +111,6 @@ pipeline {
         success {
             echo '🚀 Deployment successful!'
             sh 'docker compose ps'
-            sh 'docker images | grep devopsexamapp'
             archiveArtifacts artifacts: 'trivy-fs-report.html', allowEmptyArchive: true
         }
         failure {
@@ -118,7 +119,6 @@ pipeline {
             echo "=== Error Investigation ==="
             docker compose logs --tail=50 || true
             '''
-            archiveArtifacts artifacts: 'trivy-fs-report.html', allowEmptyArchive: true
         }
         always {
             sh '''
